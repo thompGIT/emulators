@@ -122,6 +122,7 @@ void Chip8::EmulateCycle() {
                 case 0x0000: { // 00E0       Clears the screen.                    
                     memset(gfx, 0x00, sizeof(gfx));
                     drawFlag = true;
+                    pc += 2;
                     break;
                 }
                 case 0x000E: { // 00EE	    Returns from a subroutine.
