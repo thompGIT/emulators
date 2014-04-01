@@ -119,14 +119,16 @@ void Chip8::EmulateCycle() {
     switch (opcode & 0xF000) {
         case 0x0000: {
             switch(opcode & 0x000F) {   
-                case 0x0000: { // 00E0       Clears the screen.
-                    // TODO
+                case 0x0000: { // 00E0       Clears the screen.                    
+                    memset(gfx, 0x00, sizeof(gfx));
+                    drawFlag = true;
                     break;
                 }
                 case 0x000E: { // 00EE	    Returns from a subroutine.
+                    sp--;
                     pc = stack[sp];
                     stack[sp] = 0x00;
-                    sp--;
+                    pc += 2;
                     break;
                 }
                 default: {
@@ -148,23 +150,26 @@ void Chip8::EmulateCycle() {
         }
         case 0x3000: { // 3XNN	    Skips the next instruction if VX equals NN.
             if ( V[(opcode & 0x0F00) >> 8] == (opcode & 0x00FF) ) {
+                pc += 4;
+            } else {
                 pc += 2;
             }
-            pc += 2;
             break;
         }
         case 0x4000: { // 4XNN	    Skips the next instruction if VX doesn't equal NN.
             if ( V[(opcode & 0x0F00) >> 8] != (opcode & 0x00FF) ) {
+                pc += 4;
+            } else {
                 pc += 2;
             }
-            pc += 2;
             break;
         }
         case 0x5000: {  // 5XY0	    Skips the next instruction if VX equals VY.
             if ( V[(opcode & 0x0F00) >> 8] == V[opcode & 0x00F0 >> 4] ) {
+                pc += 4;
+            } else {
                 pc += 2;
             }
-            pc += 2;
             break;
         }
         case 0x6000: {  // 6XNN	    Sets VX to NN.
@@ -211,9 +216,9 @@ void Chip8::EmulateCycle() {
                 }
                 case 0x0005: { // 8XY5	    VY is subtracted from VX. VF is set to 0 when there's a borrow, and 1 when there isn't.
                     if (V[(opcode & 0x00F0) >> 4] > V[(opcode & 0x0F00) >> 8]) {
-                        V[0xF] = 1;     // Carry
-                    } else {
                         V[0xF] = 0;     // No Carry
+                    } else {
+                        V[0xF] = 1;     // Carry
                     }                    
                     V[(opcode & 0x0F00) >> 8] -= V[(opcode & 0x00F0) >> 4];                    
                     pc += 2;   
@@ -221,15 +226,15 @@ void Chip8::EmulateCycle() {
                 }
                 case 0x0006: { // 8XY6	    Shifts VX right by one. VF is set to the value of the least significant bit of VX before the shift.[2]
                     V[0xF] = V[(opcode & 0x0F00) >> 8] & 0x01;
-                    V[(opcode & 0x0F00) >> 8] = V[(opcode & 0x0F00) >> 8] >> 1;
+                    V[(opcode & 0x0F00) >> 8] >>= 1;
                     pc += 2;      
                     break;
                 }
                 case 0x0007: { // 8XY7	    Sets VX to VY minus VX. VF is set to 0 when there's a borrow, and 1 when there isn't.
                     if (V[(opcode & 0x00F0) >> 4] < V[(opcode & 0x0F00) >> 8]) {
-                        V[0xF] = 1;     // Carry
+                        V[0xF] = 0;     // Borrow
                     } else {
-                        V[0xF] = 0;     // No Carry
+                        V[0xF] = 1;     // No Borrow
                     }                    
                     V[(opcode & 0x0F00) >> 8] = V[(opcode & 0x00F0) >> 4] - V[(opcode & 0x0F00) >> 8];
                     pc += 2;                       
@@ -237,7 +242,7 @@ void Chip8::EmulateCycle() {
                 }
                 case 0x000E: { // 8XYE	    Shifts VX left by one. VF is set to the value of the most significant bit of VX before the shift.[2]
                     V[0xF] = (V[(opcode & 0x0F00) >> 8] & 0x80) >> 7;
-                    V[(opcode & 0x0F00) >> 8] = V[(opcode & 0x0F00) >> 8] << 1;
+                    V[(opcode & 0x0F00) >> 8] <<= 1;
                     pc += 2;      
                     break;
                 }
@@ -250,7 +255,7 @@ void Chip8::EmulateCycle() {
         }
         case 0x9000: { // 9XY0	    Skips the next instruction if VX doesn't equal VY.
             if ( V[(opcode & 0x0F00) >> 8] != V[opcode & 0x00F0 >> 4] ) {
-                pc += 2;
+                pc += 4;
             }
             pc += 2;
             break;
@@ -265,7 +270,7 @@ void Chip8::EmulateCycle() {
             break;
         }
         case 0xC000: { // CXNN	    Sets VX to a random number and NN.
-            // TODO
+			V[(opcode & 0x0F00) >> 8] = (rand() % 0xFF) & (opcode & 0x00FF);
             break;
         }
         case 0xD000: { // DXYN	    Draws a sprite at coordinate (VX, VY) that has a width of 8 pixels and a height of N pixels. Each row of 8 pixels is read as bit-coded (with the most significant bit of each byte displayed on the left) starting from memory location I; I value doesn't change after the execution of this instruction. As described above, VF is set to 1 if any screen pixels are flipped from set to unset when the sprite is drawn, and to 0 if that doesn't happen.
@@ -323,6 +328,20 @@ void Chip8::EmulateCycle() {
                     break;
                 }
                 case 0x000A: { // FX0A	A key press is awaited, and then stored in VX.
+                    					
+                    bool keyPress = false;
+
+                    for(int i = 0; i < 16; ++i) {
+                        if(key[i] != 0) {
+                            V[(opcode & 0x0F00) >> 8] = i;
+                            keyPress = true;
+                        }
+                    }
+
+                    // If we didn't received a keypress, skip this cycle and try again.
+                    if(!keyPress)						
+                        return;
+                        
                     break;
                 }
                 case 0x0015: { // FX15	Sets the delay timer to VX.
@@ -346,7 +365,7 @@ void Chip8::EmulateCycle() {
                     break;
                 }
                 case 0x0029: { // FX29	Sets I to the location of the sprite for the character in VX. Characters 0-F (in hexadecimal) are represented by a 4x5 font.
-                    
+                    I = V[(opcode & 0x0F00) >> 8] * 0x5;
                     pc += 2;
                     break;
                 }
@@ -358,13 +377,34 @@ void Chip8::EmulateCycle() {
                     break;
                 }
                 case 0x0055: { // FX55	Stores V0 to VX in memory starting at address I.
+/*                    
                     memcpy(memory + I, V, ((opcode & 0x0F00) >> 8) * 2);
+                    I += ((opcode & 0x0F00) >> 8) + 1;
                     pc += 2;
+*/                    
+
+                    for (int i = 0; i <= ((opcode & 0x0F00) >> 8); ++i)
+                        memory[I + i] = V[i];	
+
+                    // On the original interpreter, when the operation is done, I = I + X + 1.
+                    I += ((opcode & 0x0F00) >> 8) + 1;
+                    pc += 2;
+
                     break;
                 }
                 case 0x0065: { // FX65	Fills V0 to VX with values from memory starting at address I.
-                    memcpy((void*)V, memory + I, ((opcode & 0x0F00) >> 8) * 2);
+/*                    memcpy((void*)V, memory + I, ((opcode & 0x0F00) >> 8) * 2);
+                    I += ((opcode & 0x0F00) >> 8) + 1;
                     pc += 2;
+*/
+                    
+                    for (int i = 0; i <= ((opcode & 0x0F00) >> 8); ++i)
+                        V[i] = memory[I + i];			
+
+                    // On the original interpreter, when the operation is done, I = I + X + 1.
+                    I += ((opcode & 0x0F00) >> 8) + 1;
+                    pc += 2;
+                   
                     break;
                 }
                 default: {

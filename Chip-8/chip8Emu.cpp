@@ -176,6 +176,8 @@ void reshape_window(GLsizei w, GLsizei h) {
 void keyboardDown(unsigned char key, int x, int y) {
     if(key == 27)    // esc
         exit(0);
+        
+    printf("keyDown: %u\n", key);
 
     if(key == '1')		myChip8.key[0x1] = 1;
     else if(key == '2')	myChip8.key[0x2] = 1;
@@ -202,6 +204,8 @@ void keyboardDown(unsigned char key, int x, int y) {
 
 void keyboardUp(unsigned char key, int x, int y)
 {
+    printf("keyUp: %u", key);
+    
     if(key == '1')		myChip8.key[0x1] = 0;
     else if(key == '2')	myChip8.key[0x2] = 0;
     else if(key == '3')	myChip8.key[0x3] = 0;
