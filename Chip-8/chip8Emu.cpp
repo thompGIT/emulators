@@ -100,7 +100,7 @@ void display() {
     }
     
     // Throttle
-    usleep(1600);     // 1000 / 16 = 16.666667    
+    usleep(160);     // 1000ms / 16 = 16.666667ms
 }
 
 void reshape_window(GLsizei w, GLsizei h) {

@@ -10,6 +10,8 @@
 #ifndef __CHIP8__ 
 #define __CHIP8__
 
+#define OPCODE_LEN 2
+
 class Chip8 {
     
     public:
@@ -20,7 +22,7 @@ class Chip8 {
         
         // Graphics
         unsigned char gfx[64 * 32]; // 2048 total pixels
-        bool drawFlag;
+        bool drawFlag;              // Frame ready to draw
        
         // I/O
         unsigned char key[16];      // Hex based keypad input
@@ -35,10 +37,10 @@ class Chip8 {
         
         // Memory
         unsigned char memory[4096]; // Memory (size = 4k)
-        unsigned short  stack[16];  // Stack (16 levels)
+        unsigned short stack[16];   // Stack (16 levels)
         
         // Registers
-        unsigned char  V[16];       // 16 8-bit data registers (V0 - VF)
+        unsigned char V[16];        // 16 8-bit data registers (V0 - VF)
         unsigned short I;           // Address Register
         unsigned short pc;          // Program Counter  (0x000 to 0xFFF)
         unsigned short sp;          // Stack Pointer        
